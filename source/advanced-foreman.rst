@@ -1,0 +1,1342 @@
+5. Advanced Foreman
+===================
+
+5.1 API
+_______
+`API v2 <https://www.theforeman.org/api/1.21/index.html>`_ is the default, stable and recommended version for Foreman 1.21. API v1 is also available, but future versions of Foreman will eventually deprecate and remove it.
+
+This section documents the JSON API conventions for the Foreman API v2 and Katello API v2. To explicitly select the API version, see `Section 5.1.6 <https://www.theforeman.org/manuals/1.21/index.html#5.1.6APIVersioning>`_ .
+
+5.1.1 CRUD Request Examples
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The following examples show the basic CRUD operations (Create, Read, Update, Delete) using the JSON API.
+
+
+Show a Collection of Objects
+
+Get of a collection of domains: GET /api/domains
+
+Send a HTTP GET request. No JSON data hash is required.
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" https://foreman.example.com/api/domains
+
+This returns a collection JSON response. The format for a collection response is described in Section 5.1.2.
+
+
+Show a Single Object
+
+Get a single domain: GET /api/domains/:id or GET /api/domains/:name
+
+Send a HTTP GET request with the object’s unique identifer, either :id or :name. No JSON data hash is required.
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    https://foreman.example.com/api/domains/42
+# or
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    https://foreman.example.com/api/domains/foo
+
+This returns a single object in JSON format. The format for a single object response is described in Section 5.1.3.
+
+
+Create an Object
+
+Create a new domain: POST /api/domains
+
+Send a HTTP POST request with a JSON data hash containing the required fields to create the object. In this example, a domain is being created.
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" -H "Content-Type: application/json" \
+    -X POST -d '{ "name":"foo.bar.com","fullname":"foo.bar.com description" }' \
+    https://foreman.example.com/api/domains
+
+This returns the newly created object in JSON format, with the same attributes as in the show/GET call. The format for a single object response is described in Section 5.1.3.
+
+The HTTP response code of the create call will be 201, if created successfully.
+
+
+Update an Object
+
+Update a domain: PUT /api/domains/:id or PUT /api/domains/:name
+
+Send a HTTP PUT request with the object’s unique identifer, either :id or :name, plus a JSON data hash containing only the data to be updated. In this example, only the domain name is being updated.
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" -H "Content-Type: application/json" \
+    -X PUT -d '{ "name": "a new name" }' https://foreman.example.com/api/domains/12
+# or
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" -H "Content-Type: application/json" \
+    -X PUT -d '{ "name": "a new name" }' https://foreman.example.com/api/domains/foo
+
+This returns the newly updated object in JSON format. The format for a single object response is described in Section 5.1.3.
+
+
+Delete an Object
+
+Delete a domain: DELETE /api/domains/:id or DELETE /api/domains/:name
+
+Send a HTTP DELETE request with the object’s unique identifer, either :id or :name. No JSON data hash is required.
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" -X DELETE \
+    https://foreman.example.com/api/domains/17
+# or
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" -X DELETE \
+    https://foreman.example.com/api/domains/foo
+
+This returns the deleted object in JSON format. The format for a single object response is described in Section 5.1.3.
+
+5.1.2 JSON Response Format for Collections
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Collections are a list of objects (i.e. hosts, domains, etc). The format for a collection JSON response consists of a results root node and metadata fields total, subtotal, page, per_page. Note: for Katello objects, the metadata includes limit, offset instead of page, per_page.
+
+Below is an example of the format for a collection JSON response for a list of domains: GET /api/domains
+
+{
+    "total": 3,
+    "subtotal": 3,
+    "page": 1,
+    "per_page": 20,
+    "search": null,
+    "sort": {
+        "by": null,
+        "order": null
+    },
+    "results": [
+        {
+            "id": 23,
+            "name": "qa.lab.example.com",
+            "fullname": "QA",
+            "dns_id": 10,
+            "created_at": "2013-08-13T09:02:31Z",
+            "updated_at": "2013-08-13T09:02:31Z"
+        },
+        {
+            "id": 25,
+            "name": "sat.lab.example.com",
+            "fullname": "SATLAB",
+            "dns_id": 8,
+            "created_at": "2013-08-13T08:32:48Z",
+            "updated_at": "2013-08-14T07:04:03Z"
+        },
+        {
+            "id": 32,
+            "name": "hr.lab.example.com",
+            "fullname": "HR",
+            "dns_id": 8,
+            "created_at": "2013-08-16T08:32:48Z",
+            "updated_at": "2013-08-16T07:04:03Z"
+        }
+    ]
+}
+
+The response metadata fields are described below:
+
+    total - total number of objects without any search parameters
+    subtotal - number of objects returned with given search parameters (if there is no search, then subtotal equals total)
+    page (Foreman only) - page number
+    per_page (Foreman only) - maximum number of objects returned per page
+    limit - (Katello only) specified number of objects to return in collection response
+    offset - (Katello only) number of objects skipped before beginning to return collection.
+    search - search string (based on scoped_scoped syntax)
+    sort
+        by - the field that the collection is sorted by
+        order - sort order, either ASC for ascending or DESC for descending
+    results - collection of objects. See Section 5.1.4 for how to change the root name from ‘results’ to something else.
+
+5.1.3 JSON Response Format for Single Objects
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Single object JSON responses are used to show a single object. The object’s unique identifier :id or :name is required in the GET request. Note that :name may not always be used as a unqiue identifier, but :id can always be used. The format for a single object JSON response consists of only the object’s attributes. There is no root node and no metadata by default. See Section 5.1.4 for how to add a root name.
+
+Below is an example of the format for a single object JSON response: GET /api/domains/23 or GET /api/domains/qa.lab.example.com
+
+{
+    "id": 23,
+    "name": "qa.lab.example.com",
+    "fullname": "QA",
+    "dns_id": 10,
+    "created_at": "2013-08-13T09:02:31Z",
+    "updated_at": "2013-08-13T09:02:31Z"
+}
+
+5.1.4 Customize JSON Responses
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Customize Root Node for Collections
+
+The default root node name for collections is results but can be changed.
+
+To change the root node name per API request, pass root_name= as a URL parameter. See example below:
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    https://foreman.example.com/api/domains?root_name=data
+
+
+Customize Root Node for Single Object
+
+There is no root node as the default for single object JSON responses, but it can be added.
+
+To change the object’s root node name per API request, pass object_name= as a URL parameter. See example below:
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    https://foreman.example.com/api/domains/23?object_name=record
+
+
+Customize Partial Response Attributes
+
+Currently, there is no option to change or customize which attributes are returned for collections or single objects. In the future, customized partial responses such as fields=field1,field2,field3 or fields=all may be implemented (#3019). Similarly, there is currently no option to specify child nodes in an API call or to remove child nodes if they are returned by default.
+
+
+Custom Number of Objects in Collection Per Response
+
+Foreman paginates all collections in the JSON response. The number of objects returned per request is defined in Administer > Settings > General > entries_per_page. The default is 20. Thus, if there are 27 objects in a collection, only 20 will be returned for the default page=1.
+
+To view the next page, pass page= as a URL parameter. See example below:
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    https://foreman.example.com/api/domains?page=2
+
+The example above will show the remaining 7 objects in our example of 27 objects in the collection.
+
+To increase or decrease the number of objects per response, pass per_page= as a URL parameter. See example below:
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    https://foreman.example.com/api/domains?per_page=1000
+
+This will return all the objects in one request since 27 is less than the per_page parameter set to 1000.
+
+
+Custom Search of Collections Per Response
+
+Foreman uses the scoped_search library for searching and filtering which allows all query search parameters to be specified in one string. The syntax is described in the Searching section, and matches exactly the syntax used for the web UI search boxes. This allows you use of the auto-completer and to test a query in the UI before reusing it in the API.
+
+To filter results of a collection, pass search= as a URL parameter, ensuring that it is fully URL-escaped to prevent search operators being misinterpreted as URL separators. See example below:
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    https://foreman.example.com/api/domains?search=name%3Dexample.com
+
+The number of objects returned will be shown in the subtotal metadata field, and the query string will be shown in the search metadata field.
+
+
+Custom Sort of Collections Per Response
+
+Custom sort order per collection can be specified by passing order= as a URL parameter. See example below:
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    https://foreman.example.com/api/domains?order=name+DESC
+
+The default sort order is ascending (ASC) if only a field name is passed. The sort parameters will be shown in sort by and order metadata fields.
+5.1.5 Nested API routes
+^^^^^^^^^^^^^^^^^^^^^^^
+The goal is to implement nested routes for all objects as an alternative to filtering collections.
+
+For example, rather then filtering subnets by a specified domain using a search string
+
+$ GET /api/subnets?search=name%3Dqa.lab.example.com
+
+the alternative nested route below returns the same result as the above.
+
+$ GET /api/domains/qa.lab.example.com/subnets
+
+All actions will be accessible in the nested route as in the main route.
+5.1.6 API Versioning
+^^^^^^^^^^^^^^^^^^^^
+The default API version is v2 for Foreman 1.21, however explicitly requesting the version is recommended. Both API v1 and v2 are currently shipped.
+
+There are two methods of selecting an API version:
+
+    In the header, pass Accept: application/json,version=2
+
+    In the URL, pass /v2/ such as GET /api/v2/hosts
+
+Similarly, v1 can still be used by passing Accept: application/json,version=1 in the header or api/v1/ in the URL.
+5.1.7 Handling Associations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Updating and creating associations are done in a few different ways in the API depending on the type of association.
+One-to-One and One-to-Many
+
+To update a one-to-one or a one-to-many association, simply set the name or id on the object. For example, to set a host group for a host, simply set the hostgroup_name or hostgroup_id of the host.
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    -H "Content-Type: application/json" -X POST \
+    -d '{ "hostgroup_name": "telerin" }' \
+    https://foreman.example.com/api/hosts/celeborn.firstage
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    -H "Content-Type: application/json" -X POST \
+    -d '{ "hostgroup_id": 42 }' \
+    https://foreman.example.com/api/hosts/celeborn.firstage
+
+Many-to-One and Many-to-Many
+
+To update an association for an object that contains a collection of other objects, there are a few options. First you can set the names or ids:
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    -H "Content-Type: application/json" -X POST \
+    -d '{ "host_names": ["enel.first", "celeborni.first", "elwe.first"] }' \
+    https://foreman.example.com/api/hostgroups/telerin
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    -H "Content-Type: application/json" -X POST \
+    -d '{ "host_ids": [4, 5, 6] }' \
+    https://foreman.example.com/api/hostgroups/telerin
+
+This will set the host group’s hosts to enel, celeborn, and elwe (or 4, 5, 6) and only those.
+
+Alternatively, you can pass in a set of objects:
+
+$ curl -k -u admin:changeme -H "Accept: version=2,application/json" \
+    -H "Content-Type: application/json" -X POST \
+    -d '{ "domains": [{ "name": "earendil", "id": 1}, { "name": "turgon", "id": 3 }] }' \
+    https://foreman.example.com/api/subnets/iluvatar
+
+This would set the domains for the subnet to be earendil and turgon. If another domain for example belonged to the subnet before the request, it would be removed.
+5.1.8 Authentication
+^^^^^^^^^^^^^^^^^^^^
+The API requires authentication for all endpoints, typically using HTTP Basic authentication. Requests with credentials are authenticated against the users stored in Foreman.
+HTTP Basic authentication
+
+HTTP Basic authentication (RFC 2617) is supported by a wide range of API and web clients and works by specifying a Base64-encoded username and password in an Authorization header. For example, these common clients can access the API with the following arguments:
+
+    curl -u admin:changeme, or curl -u admin (interactive prompt)
+    wget --user=admin --password=changeme
+
+Every call to the API will require authentication, unless the client supports sessions (see below). Some clients may also support storing credentials in ~/.netrc or similar for more privacy.
+
+No confidentiality is provided with this method, so it is very important to use HTTPS when connecting to Foreman to prevent the plain-text credentials from being obtained. (Note that when require_ssl is enabled, access to the API will only be allowed over HTTPS.)
+Session support
+
+When authenticating to the API, a new server-side session will be created on each request and the response will contain a cookie containing a session ID. If this cookie is stored by the client, it can be used on subsequent requests so the credentials are only passed over the connection once.
+
+A basic authenticated request to the status API returns the following Set-Cookie header, containing a _session_id cookie:
+
+> GET /api/v2/status HTTP/1.1
+> Authorization: Basic YWRtaW46Y2hhbmdlbWU=
+> Host: foreman.example.com
+> Accept: */*
+
+< HTTP/1.1 200 OK
+< ...
+< Set-Cookie: _session_id=572ca37e8c5845b900cc58d45d6e1e34; path=/; secure; HttpOnly
+
+When supplying this on subsequent requests, they will use the same account:
+
+> GET /api/v2/status HTTP/1.1
+> Host: foreman.example.com
+> Accept: */*
+> Cookie: _session_id=572ca37e8c5845b900cc58d45d6e1e34
+
+< HTTP/1.1 200 OK
+< ...
+
+Command-line clients may support cookie jars for automatic storage of cookies, e.g. curl -c ~/.foreman_cookies -b ~/.foreman_cookies will automatically store and use cookies.
+5.1.9 Using OAuth
+^^^^^^^^^^^^^^^^^
+Alternatively to basic authentication, limited OAuth 1.0 authentication is supported in the API.
+Configuration of OAuth in Foreman
+
+OAuth must be enabled in Foreman settings. In Administer > Settings > Authentication, search for OAuth active configuration and set it to Yes. Then set OAuth consumer key to some string. This will be a token used by all OAuth clients.
+
+If you want all API requests made using OAuth to be authorized as built-in anonymous admin user keep OAuth map users set to No. If you want to specify the user under which the request is made, change this configuration option to Yes. This allows client to send FOREMAN-USER header with the login of existing Foreman user. Please note that this header is not signed in OAuth request so can be forged. Anyone with valid consumer key can impersonate any Foreman user.
+Request example
+
+Usually some OAuth client library is used to generate the request. An example of curl command can be found here to better understand how it works
+
+$ curl 'https://foreman.example.com/api/architectures' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json,version=2' \
+  -H 'FOREMAN-USER: ares' \
+  -H 'Authorization: OAuth oauth_version="1.0",oauth_consumer_key="secretkey",oauth_signature_method="hmac-sha1",oauth_timestamp=1321473112,oauth_signature=Il8hR8/ogj/XVuOqMPB9qNjSy6E='
+
+In example above we list architectures using OAuth for authentication. We try to do the request under user with login ares, if mapping is enabled on Foreman side, the result will only include architectures, that user ares can see. Note that we constructed the signature manually, this should change with any oauth_timestamp change. Also it reflects every parameter, HTTP method and URI change. Therefore we recommend using some OAuth client library that will construct all OAuth parameters.
+5.1.10 Using Apipie-Bindings
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The following examples show how to do basic API operations using apipie-bindings.
+Show a Collection of Objects
+
+Get of a collection of domains: GET /api/domains
+
+Call the index function of the domains resource.
+
+#!/usr/bin/env ruby
+
+require 'apipie-bindings'
+
+url = 'https://foreman.example.com/'
+username = 'admin'
+password = 'changeme'
+api = ApipieBindings::API.new({:uri => url, :username => username, :password => password, :api_version => '2'})
+domains = api.resource(:domains).call(:index)
+
+domains['results'].each do |domain|
+  puts domain
+end
+
+$ ruby domains.rb
+{"fullname"=>"", "dns_id"=>1, "created_at"=>"2016-05-06 08:46:20 UTC", "updated_at"=>"2016-11-24 11:49:06 UTC", "id"=>1, "name"=>"example.com"}
+
+Show a Single Object
+
+Get a single domain: GET /api/domains/:id or GET /api/domains/:name
+
+Call the show function of the domains resource with the object’s unique identifer :id or :name.
+
+#!/usr/bin/env ruby
+
+require 'apipie-bindings'
+
+url = 'https://foreman.example.com/'
+username = 'admin'
+password = 'changeme'
+api = ApipieBindings::API.new({:uri => url, :username => username, :password => password, :api_version => '2'})
+puts api.resource(:domains).call(:show, {:id => 1})
+puts api.resource(:domains).call(:show, {:id => 'example.com'})
+
+Create an Object
+
+Create a new domain: POST /api/domains
+
+Call the create function of the domains resource with a JSON data hash containing the required fields to create the object. In this example, a domain is being created.
+
+#!/usr/bin/env ruby
+
+require 'apipie-bindings'
+
+url = 'https://foreman.example.com/'
+username = 'admin'
+password = 'changeme'
+api = ApipieBindings::API.new({:uri => url, :username => username, :password => password, :api_version => '2'})
+api.resource(:domains).call(:create, {:domain => {:name => "foo.example.com", :fullname => "foo.example.com"}})
+
+Update an Object
+
+Update a domain: PUT /api/domains/:id or PUT /api/domains/:name
+
+Call the update function of the domains resorce with the object’s unique identifer, either :id or :name, plus a JSON data hash containing only the data to be updated. In this example, only the domain name is being updated.
+
+#!/usr/bin/env ruby
+
+require 'apipie-bindings'
+
+url = 'https://foreman.example.com/'
+username = 'admin'
+password = 'changeme'
+api = ApipieBindings::API.new({:uri => url, :username => username, :password => password, :api_version => '2'})
+api.resource(:domains).call(:update, {:id => 3, :domain => {:name => "foo.example.com", :fullname => "foo.example.com"}})
+
+Delete an Object
+
+Delete a domain: DELETE /api/domains/:id or DELETE /api/domains/:name
+
+Call the destroy function of the domains resorce with the object’s unique identifer, either :id or :name.
+
+#!/usr/bin/env ruby
+
+require 'apipie-bindings'
+
+url = 'https://foreman.example.com/'
+username = 'admin'
+password = 'changeme'
+api = ApipieBindings::API.new({:uri => url, :username => username, :password => password, :api_version => '2'})
+api.resource(:domains).call(:destroy, {:id => 3})
+
+5.2 Compute Resources
+_____________________
+
+Foreman supports creating and managing hosts on a number of virtualization and cloud services - referred to as “compute resources” - as well as bare metal hosts.
+
+The capabilities vary between implementations, depending on how the compute resource provider deploys new hosts and what features are available to manage currently running hosts. Some providers are able to support unattended installation using PXE, while others are image-based. Some providers have graphical consoles that Foreman interfaces to, and most have power management features. A summary of all providers and their support features is given below, and more detailed sections follow with specific notes.
+
+
+Support for these features is aimed at being as transparent as possible, allowing the same configuration to be applied to hosts irrespective of the provider in use (compute resource or not). The selection of compute resource is made when creating a new host and the host in Foreman’s database remains associated to the VM that’s created, allowing it to be managed throughout the lifetime of the host.
+
+Networking varies between providers - where “MAC” is specified, the compute resource provides the MAC address for newly created virtual machines (layer 2 networking), and IP addresses are assigned in/by Foreman. Where “IPv4” and/or “IPv6” is specified, the compute resource assigns an IP address for virtual machine interfaces (layer 3 networking) and the addresses will be stored by Foreman when creating a host.
+5.2.1 Using Compute Resources
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following steps describe how to configure a compute resource and provision new hosts on it.
+
+    Ensure the necessary package for the provider (from the above table) is installed, e.g. yum -y install foreman-ovirt. Restart the Foreman application to complete installation.
+
+    Add a compute resource under Infrastructure > Compute Resources > New Compute Resource. Select the provider type from the menu and appropriate configuration options will be displayed. Check the notes sections below for any provider-specific setup instructions.
+
+    Click the Test Connection button after entering the configuration. If no error is displayed, the test was successful.
+
+    After saving the compute resource, existing virtual machines can be browsed by clicking on the compute resource and the Virtual Machines tab.
+
+    For providers that use images, click on the compute resource, then the Images tab, where known images are listed. To register images that Foreman can use, click New Image and enter the details.
+
+    To provision a new host on this compute resource, from Hosts, click New Host and select the compute resource from the Deploy to menu.
+
+Also note the following features:
+
+    When viewing a host, power management controls and the console access button are in the top right hand corner of the page.
+
+    If a host provisioned on a compute resource is deleted, the VM and associated storage on the compute resource will also be deleted.
+
+    Users in Foreman can have access restricted to hosts present on certain compute resources. For more information, see Filtering in 4.1.2 Roles and Permissions.
+
+5.2.2 Using Compute Profiles
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A compute profile is a way of expressing a set of defaults for VMs created on a specific compute resource that can be mapped to an operator-defined label. This means an administrator can express, for example, what “Small”, Medium” or “Large” means on all of the individual compute resources present for a given installation.
+
+In combination with host groups, this allows a user to completely define a new host from just the Host tab of the New Host form.
+
+You can find the configuration for compute profiles at Infrastructure > Compute Profiles
+Default Profiles
+
+By default, Foreman comes with 3 predefined profiles; “1-Small”, “2-Medium”, and “3-Large” (the numbers are just to make them sort nicely). They come with no associated configuration for any particular compute resource, and as such, they can be deleted or renamed as required.
+
+Profile List
+Assigning information to a Profile
+
+This walkthrough will define what “1-Small” means for a particular installation. It will also assume there are two compute resources; one Libvirt and one EC2 (these make a good example as they are very different).
+
+Start by editing the compute profile, by clicking its name in the profile list. This leads to a list of all your current compute resources. Later, once the configuration is done, this list will also display the current defaults configured for each compute resource.
+
+Profile Edit
+EC2
+
+Clicking on the EC2 resource will bring up a page very similar to the one used when provisioning a single host. Here an administrator can set what “1-Small” means on this specific EC2 resource. For this example, “m1.small” is selected as the size. Defaults can also be specified for the image choice, the security groups, and so on.
+
+EC2
+
+The changes are submitted, and on returning to the profile list, the new EC2 defaults will be shown.
+Libvirt
+
+In a very similar manner, the Libvirt resource can be clicked upon, and some defaults assigned. For this example, since this is the “1-Small” profile, 1 CPU, 512MB of RAM, a single bridged network device, and a 5GB disk are selected.
+
+Libvirt
+
+Again, the changes are submitted.
+Applying a Compute Profile
+
+
+Now visit Hosts > New Host. At first, things look exactly as before, but once a compute resource is selected which has at least one compute profile, a new combo-box will appear. This permits the user to select a profile to apply to this host. For this example, the Libvirt resource is selected, followed by the “1-Small” profile.
+
+Primary Tab
+
+Once the profile is selected, the Virtual Machine tab will automatically update to use the defaults configured in the “1-Small” profile.
+
+VM Tab
+
+Assuming the defaults are suitable, the host has now been defined solely by selecting a host group and a profile. It’s also possible to associate a profile with a host group in the host group edit page, which will automatically select that profile when the host group is selected.
+5.2.3 EC2 Notes
+^^^^^^^^^^^^^^^
+
+    Add a provisioning template of either type finish or user_data which will be executed on the new image.
+        ‘finish’ templates complete the provisioning process via SSH - this requires Foreman to be able to reach the IP of the new host, and that SSH is allowing connections from Foreman. This uses the SSH key which Foreman uploaded to your compute resource when it was added to Foreman.
+        ‘user_data’ templates instead provision by cloud-init (or similar meta-data retrieving scripts). This will not require Foreman to be able to reach the host, but the host must be able to reach Foreman (since user_data execution is asynchronous, the host must notify Foreman that the build is complete).
+    Ensure AMIs are added under the Images tab on the compute resource
+        Ensure the correct username is set for Foreman to SSH into the image (if using SSH provisioning).
+        Tick the user_data box if the image is capable of using user_data scripts (usually because it has cloud-init installed).
+    Enabling use_uuid_for_certificates in Administer > Settings is recommended for consistent Puppet certificate IDs instead of hostnames.
+    VPC subnets and security groups can be selected on the Network tab when creating a host.
+    The Managed IP dropdown menu allows selection between using the public and private IP address for communication from Foreman to the instance.
+    Ensure that the selected template is associated to the OS (on the Associations tab) and is set as the default for the operating system too.
+
+A finish-based example for configuring EC2 provisioning is given on the Foreman blog: EC2 provisioning using Foreman.
+5.2.4 Google Compute Engine Notes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    Requires client e-mail address of an authorised Google Cloud Console client ID is entered in the new compute resource screen and its associated .p12 private key file is manually transferred to the foreman server.
+    The certificate must be stored in a location the foreman user account has permission to read.
+    If your server enforces SELinux ensure the context is suitable or relabel it using restorecon -vv /usr/share/foreman/gce.p12
+    Specify the location on the foreman server as the certificate path value e.g /usr/share/foreman/gce.p12
+    Ensure images are associated under the Images tab on the compute resource.
+    Add a provisioning template of type finish which will be executed over SSH on the new image.
+    Ensure the finish template is associated to the OS (on the Associations tab) and is set as the default for the operating system too.
+    Enabling use_uuid_for_certificates in Administer > Settings is recommended for consistent Puppet certificate IDs instead of hostnames.
+    The External IP checkbox means the public IP address (rather than private IP) will be used for communication with the instance from Foreman.
+
+Setting up the cloud project
+
+All Google Compute Engine access is contained within a “project” set up via the Google Developers Console. Access the Google Developers Console, and click Create Project.
+
+Create Project
+
+By default, your project will have the Compute Engine and App Engine services enabled. Now go to the API manager, and select the Google Compute Engine API.
+
+API Manager
+
+Next, under APIs & auth, then APIs, click the Enable button.
+
+Enable API
+
+Under Credentials, click Create Credentials > Create service account key and choose your service account for Compute Engine.
+
+Service account
+
+Click Generate new P12 key and save the new .p12 file. This should be uploaded to the Foreman server to a location that the ‘foreman’ user can read, such as /usr/share/foreman/gce.p12. You don’t need to provide any password to Foreman to use this PKCS12 key.
+Change the .p12 file owner to 'foreman' and chmod 0600 for security. If your server uses SELinux ensure the context is suitable or relabel it using restorecon -vv /usr/share/foreman/gce.p12
+Adding the compute resource
+
+In Foreman, under Infrastructure > Compute resources > New compute resource, select Google from the provider dropdown menu and fill in the GCE-specific fields as follows:
+
+    Google Project ID: shown on the project overview page in the GCE console, e.g. “nomadic-rite-396”
+    Client Email: shown on the Credentials page after creating the service account as Service account ID, e.g. “543…@developer.gserviceaccount.com”
+    Certificate path: full path of the .p12 file stored on the Foreman server, e.g. /usr/share/foreman/gce.p12
+
+5.2.5 Libvirt Notes
+^^^^^^^^^^^^^^^^^^^
+    Currently only supports KVM hypervisors.
+    VM consoles will be configured by default to listen on 0.0.0.0, change this via libvirt_default_console_address in Administer > Settings > Provisioning.
+    libvirt’s DNS and DHCP server (dnsmasq) can be disabled and replaced by BIND and ISC DHCPD (managed by Foreman) by creating a new virtual network and disabling DHCP support.
+
+Connections
+
+To connect to the hypervisor using SSH:
+
+    Configure SSH keys (ssh-keygen) for the ‘foreman’ user on the Foreman host to connect fully automatically to the remote hypervisor host.
+    Change to the ‘foreman’ user, test the connection and ensure the remote host has been trusted.
+    If connecting to the hypervisor as a non-root user, set up PolicyKit to permit access to libvirt. Note that different versions of PolicyKit have different configuration formats. 1, 2.
+    Add the compute resource with a URL following one of these examples:
+        qemu+ssh://root@hypervisor.example.com/system to use the remote ‘root’ account
+        qemu+ssh://hypervisor.example.com/system to use the remote ‘foreman’ account
+
+The first two steps above can be done with something like:
+
+root# mkdir /usr/share/foreman/.ssh
+root# chmod 700 /usr/share/foreman/.ssh
+root# chown foreman:foreman /usr/share/foreman/.ssh
+
+When using distribution packages, the directory should already be created for you so you could skip the above. Although following is necessary:
+
+root# su foreman -s /bin/bash
+foreman$ ssh-keygen
+foreman$ ssh-copy-id root@hostname.com
+foreman$ ssh root@hostname.com
+exit
+
+When using SELinux make sure the directory and the files have correct labels of ssh_home_t:
+
+ls /usr/share/foreman/.ssh -Zd
+drwx------. foreman foreman system_u:object_r:ssh_home_t:s0  /usr/share/foreman/.ssh
+ls /usr/share/foreman/.ssh -Z
+-rw-------. foreman foreman unconfined_u:object_r:ssh_home_t:s0 id_rsa
+-rw-r--r--. foreman foreman unconfined_u:object_r:ssh_home_t:s0 id_rsa.pub
+-rw-r--r--. foreman foreman unconfined_u:object_r:ssh_home_t:s0 known_hosts
+
+If not, restore the context:
+
+restorecon -RvF /usr/share/foreman/.ssh
+
+To connect to the hypervisor over TCP without authentication or encryption (not recommended):
+
+    Set the following options in libvirtd.conf:
+        listen_tls = 0
+        listen_tcp = 1
+        auth_tcp = "none"
+    Enable libvirtd listening, e.g. set LIBVIRTD_ARGS="--listen" in /etc/sysconfig/libvirtd
+    Add the compute resource with a URL following this example:
+        qemu+tcp://hypervisor.example.com:16509/system
+
+If you have difficulty connecting, test access using the virsh command under the ‘foreman’ account on the Foreman host first, e.g. virsh -c qemu+ssh://hypervisor.example.com/system list.
+Image provisioning
+
+Image based provisioning can be used by provisioning a VM with a backing image and then running a finish script over SSH, in the same manner as the EC2 provider. The type of provisioning method can be selected under the “Operating system” tab when creating a new host. To configure image/template-based provisioning:
+
+    Images refer to backing disks (usually qcow2) - create a disk containing the OS image in the libvirt storage pool.
+    Add the image by navigating to the compute resource and clicking New Image, enter the full path to the backing image in the Image path field.
+    Ensure the image is not modified as long as hosts exists that are using it, or they will suffer data corruption.
+
+Two methods to complete provisioning are supported. Either by SSHing into the newly created VM and running a script:
+
+    The template needs to have a username and password set up for Foreman to SSH in after provisioning and run the finish script.
+    This requires some form of DHCP orchestration for SSH access to the newly created host to work.
+    A finish template to perform any post-build actions (e.g. setting up Puppet) must also be associated to the host, usually by changing the OS default finish template.
+
+Or select the userdata checkbox when adding the image to Foreman, and a cloud-init compatible disk will be attached to the VM containing the userdata:
+
+    The template will need cloud-init installed and set to run on boot.
+    A userdata template to perform any post-build actions (e.g. setting up Puppet) must also be associated to the host, usually by associating the UserData default template.
+    The template will need to “phone home” to mark the host as built.
+
+5.2.6 OpenStack Notes
+^^^^^^^^^^^^^^^^^^^^^
+
+    Supports OpenStack Nova for creating new compute instances.
+    Add a provisioning template of either type finish or user_data which will be executed on the new image.
+        ‘finish’ templates complete the provisioning process via SSH - this requires Foreman to be able to reach the IP of the new host, and that SSH is allowing connections from Foreman. This uses the SSH key which Foreman uploaded to your compute resource when it was added to Foreman.
+        ‘user_data’ templates instead provision by cloud-init (or similar meta-data retrieving scripts). This will not require Foreman to be able to reach the host, but the host must be able to reach Foreman (since user_data execution is asynchronous, the host must notify Foreman that the build is complete).
+    Ensure Glance Images are added under the Images tab on the compute resource.
+        Ensure the correct username is set for Foreman to SSH into the image (if using SSH provisioning).
+        Tick the user_data box if the image is capable of using user_data scripts (usually because it has cloud-init installed).
+    Security groups can be selected on the Virtual Machine tab when creating a host.
+    The Floating IP Network dropdown menu allows selection of the network Foreman should request a public IP on. This is required when using SSH provisioning.
+    Ensure that the selected template is associated to the OS (on the Associations tab) and is set as the default for the operating system too.
+
+A finish-based example for configuring image-based provisioning is given on the Foreman blog, also applicable to OpenStack: EC2 provisioning using Foreman.
+5.2.7 oVirt / RHEV Notes
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+    SPICE consoles are displayed using an HTML5 client, so no native XPI extension is necessary.
+
+Image provisioning
+
+Image based provisioning can be used by provisioning a VM with a template and then running a finish script over SSH, in the same manner as the EC2 provider. The type of provisioning method can be selected under the “Operating system” tab when creating a new host. To configure image/template-based provisioning:
+
+    Images refer to templates and can be added by navigating to the compute resource and clicking New Image.
+    The template needs to have a username and password set up for Foreman to SSH in after provisioning and run the finish script.
+    This requires some form of DHCP orchestration for SSH access to the newly created host to work.
+    A finish template to perform any post-build actions (e.g. setting up Puppet) must also be associated to the host, usually by changing the OS default finish template.
+
+Permissions required
+
+When defining a compute resource you have to provide a user account used for communication with oVirt. It must have Admin account type role(s) with following permissions:
+
+    System
+        Configure System
+            Login Pemissions
+    Network
+        Configure vNIC Profile
+            Create
+            Edit Properties
+            Delete
+            Assign vNIC Profile to VM
+            Assign vNIC Profile to Template
+    Template
+        Provisioning Operations
+            Import/Export
+    VM
+        Provisioning Operations
+            Create
+            Delete
+            Import/Export
+            Edit Storage
+    Disk
+        Provisioning Operations
+            Create
+        Disk Profile
+            Attach Disk Profile
+
+5.2.8 Rackspace Notes
+^^^^^^^^^^^^^^^^^^^^^
+
+    The compute resource URL refers to the identity API URL, e.g. https://identity.api.rackspacecloud.com/v2.0
+
+A full example for configuring image-based provisioning is given on the Foreman blog, also applicable to Rackspace: EC2 provisioning using Foreman.
+5.2.9 VMware Notes
+^^^^^^^^^^^^^^^^^^
+
+    Only VMware clusters using vSphere are supported, not standalone ESX or ESXi servers (#1945).
+
+Image provisioning
+
+Image based provisioning can be used by provisioning a new VM from a template and then running a finish script over SSH, in the same manner as the EC2 provider. The type of provisioning method can be selected under the “Operating system” tab when creating a new host. To configure image/template-based provisioning:
+
+    Images refer to templates stored in vSphere which will be used as the basis for a new VM.
+    Add the image by navigating to the compute resource and clicking New Image, enter the relative path and name of the template on the vSphere server, e.g. My templates/RHEL 6 or RHEL 6 if it isn’t in a folder. Do not include the datacenter name.
+    The template needs to have a username and password set up for Foreman to SSH in after provisioning and run the finish script.
+    This requires some form of DHCP orchestration for SSH access to the newly created host to work.
+    A finish template to perform any post-build actions (e.g. setting up Puppet) must also be associated to the host, usually by changing the OS default finish template.
+
+Image provisioning without SSH
+
+The same process can also be done using a user_data template. To configure image/template-based provisioning without SSH, make the following adjustments for the former procedure:
+
+    Browse then to the image to be used for provisioning, and ensure that “User Data” is checked
+    Associate a user_data template to the host. The template will use cloud-init syntax.
+    Note that the images dont need cloudinit installed, as the cloudinit is converted under the hood to a CustomisationSpec object that VMware can process
+
+Console access
+
+Consoles are provided using VNC connections from Foreman to the ESX server, which requires a firewall change to open the respective ports (TCP 5901 to 5964)
+
+ssh root@esx-srv
+vi /etc/vmware/firewall/vnc.xml
+
+Add the following file content:
+
+<ConfigRoot>
+<service id='0032'>
+ <id>VNC</id>
+ <rule id = '0000'>
+  <direction>inbound</direction>
+  <protocol>tcp</protocol>
+  <porttype>dst</porttype>
+  <port>
+   <begin>5901</begin>
+   <end>5964</end>
+  </port>
+ </rule>
+ <enabled>true</enabled>
+</service>
+</ConfigRoot>
+
+Apply and check the firewall rule:
+
+esxcli network firewall refresh
+esxcli network firewall ruleset list | grep VNC
+
+Lastly, make the rule persistent.
+
+With ESX:
+
+cp /etc/vmware/firewall/vnc.xml /vmfs/volumes/datastore1/vnc.xml
+vi /etc/rc.local
+# At end of file :
+cp /vmfs/volumes/datastore1/vnc.xml /etc/vmware/firewall/
+esxcli network firewall refresh
+
+With ESXi:
+
+cp /etc/vmware/firewall/vnc.xml /vmfs/volumes/datastore1/vnc.xml
+vi /etc/rc.local.d/local.sh
+# At end of file, just before exit 0 :
+cp /vmfs/volumes/datastore1/vnc.xml /etc/vmware/firewall/
+esxcli network firewall refresh
+
+If permanent shared storage is available (direct-attach SAN, etc): rather than doing a file copy on each server, use a symlink instead. Once it’s changed on the shared storage, run a loop to refresh the firewall services. The local.sh file still needs to be created.
+
+Example:
+
+ln -s /vmfs/volumes/{uuid of shared storage}/firewall.rules/vnc.xml /etc/vmware/firewall/vnc.xml
+
+Required Permissions
+
+The minimum permissions to properly provision new virtual machines are:
+
+    All Privileges -> Datastore -> Allocate Space
+    All Privileges -> Network -> Assign Network
+    All Privileges -> Resource -> Assign virtual machine to resource pool
+    All Privileges -> Virtual Machine -> Configuration (All)
+    All Privileges -> Virtual Machine -> Interaction
+    All Privileges -> Virtual Machine -> Inventory
+    All Privileges -> Virtual Machine -> Provisioning
+
+Notes
+
+    Log in to the VMware vSphere Server that represents the Compute Resource. Create a role with the above permissions. Add the appropriate account to the role. To create user accounts, roles or for complete details on administration of VMware vSphere, please consult your VMware vSphere Server documentation.
+    The account that foreman uses to communicate with VCenter is assumed to have the ability to traverse the entire inventory in order to locate a given datacenter. A patch is required to instruct foreman to navigate directly to the appropriate datacenter to avoid permission issues (#5006).
+    Reference in the VMWare KB 2043564.
+    For debugging purpose, read the troubleshooting guide about NoVNC.
+
+5.2.10 Password Encryption
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Compute resource passwords and secrets are stored on the Foreman database using a secret - the encryption key - and ciphered using AES-256-CBC. The encryption key can usually be found in /etc/foreman/encryption_key.rb, which is symlinked to /usr/share/foreman/config/initializers/encryption_key.rb. The value of the ENCRYPTION_KEY variable must be at least 32 bytes long.
+
+If you want to regenerate the key, you can run foreman-rake security:generate_encryption_key. Please remember that previously encrypted passwords cannot be decrypted with a different encryption key, so decrypt all passwords before changing your encryption key.
+
+After you make sure you have a valid encryption key, you can encrypt your Compute Resource secrets in the database by running foreman-rake db:compute_resources:encrypt. To unencrypt them, run the task foreman-rake db:compute_resources:decrypt.
+
+Keep in mind passwords are encrypted in the Foreman database, but Foreman will decrypt them and use unencrypted credentials to authenticate to Compute Resources.
+
+5.3 Install Locations
+_____________________
+
+Missing content. Consider contributing, you kind soul! -
+
+5.4 Securing Communications with SSL
+____________________________________
+
+The Foreman web application needs to communicate securely with associated smart proxies and puppet masters, plus users and applications connecting to the web interface. This section details recommended SSL configurations.
+
+5.4.1 Securing Puppet Master Requests
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In a typical ENC-based setup with reporting, puppet masters require access to Foreman for three tasks:
+
+    Retrieval of external nodes information (classes, parameters)
+    Uploading of host facts
+    Uploading of host reports
+
+All traffic here is initiated by the puppet master itself. Other traffic from Foreman to the puppet master for certificate signing etc. is handled via smart proxies (SSL configuration covered in the next section).
+Configuration options
+
+The Foreman interface authorizes access to puppet master interfaces based on its list of registered smart proxies with the Puppet feature, and identifies hosts using client SSL certificates.
+
+Five main settings control the authentication, the first are in Foreman under Settings, Authentication:
+
+    require_ssl_smart_proxies (default: true), requires a client SSL certificate on the puppet master requests, and will verify the CN of the certificate against the smart proxies. If false, it uses the reverse DNS of the IP address making the request.
+    restrict_registered_smart_proxies (default: true), only permits access to hosts that have a registered smart proxy with the Puppet feature.
+    trusted_hosts, a whitelist of hosts that overrides the check for a registered smart proxy
+
+And two in config/settings.yaml:
+
+    login (default: true), must be enabled to prevent anonymous access to Foreman.
+    require_ssl (default: false), should be enabled to require SSL for all communications, which in turn will require client SSL certificates if require_ssl_smart_proxies is also enabled. If false, host-based access controls will be available for HTTP requests.
+
+Enabling full SSL communications
+
+Using Apache HTTP with mod_ssl and mod_passenger is recommended. For simple setups, the Puppet certificate authority (CA) can be used, with Foreman and other hosts using certificates generated by puppet cert.
+
+    Set Foreman’s require_ssl_smart_proxies, restrict_registered_smart_proxies and require_ssl to true.
+    The mod_ssl configuration must contain:
+
+    *SSLCACertificateFile* set to the Puppet CA
+    *SSLVerifyClient optional*
+    *SSLOptions +StdEnvVars +ExportCertData*
+
+    Puppet ENC/report processor configuration (e.g. /etc/puppetlabs/puppet/foreman.yaml or /etc/puppet/foreman.yaml) should have these settings:
+
+    *:ssl_ca* set to the Puppet CA
+    *:ssl_cert* set to the puppet master's certificate
+    *:ssl_key* set to the puppet master's private key
+
+Troubleshooting
+
+Warning messages will be printed to Foreman’s log file (typically /var/log/foreman/production.log) when SSL-based authentication fails.
+
+    No SSL cert with CN supplied indicates no client SSL certificate was supplied, or the CN wasn’t present on a certificate. Check the client script has the certificate and key configured and that mod_ssl has SSLVerifyClient set.
+    SSL cert has not been verified indicates the client SSL certificate didn’t validate with the SSL terminator’s certificate authority. Check the client SSL certificate is signed by the CA set in mod_ssl’s SSLCACertificateFile and is still valid. More information might be in error logs.
+    SSL is required indicates the client is using an HTTP URL instead of HTTPS.
+    No smart proxy server found on $HOST indicates Foreman has no smart proxy registered for the source host, add it to the Smart Proxies page in Foreman. A common cause of this issue is the hostname in the URL doesn’t match the hostname seen here in the log file - change the registered proxy URL to match. If no smart proxy is available or can be installed, use trusted_hosts and add this hostname to the whitelist.
+
+Advanced SSL notes
+
+A typical small setup will use a single Puppet CA and certificates it provides for the Foreman host and puppet master hosts. In larger setups with multiple CAs or an internal CA, this will require more careful configuration to ensure all hosts can trust each other.
+
+    Ensure the Common Name (CN) is present in certificates used by Foreman (as clients will validate it) and puppet master clients (used to verify against smart proxies).
+    Foreman’s SSL terminator must be able to validate puppet master client SSL certificates. In Apache with mod_ssl, the SSLCACertificateFile option must point to the CA used to validate clients and SSLVerifyClient set to optional.
+    Environment variables from the SSL terminator are used to get the client certificate and verification status. mod_ssl’s SSLOptions +StdEnvVars +ExportCertData setting enables this. Variable names are defined by ssl_client_cert_env, ssl_client_dn_env and ssl_client_verify_env settings in Foreman.
+
+Reduced security: HTTP host-based authentication
+
+In non-SSL setups, host-based authentication can be performed, so any connection from a host running a puppet smart proxy is able to access the interfaces.
+
+    Set restrict_registered_smart_proxies to true.
+    Set require_ssl_smart_proxies and require_ssl to false.
+
+No security: disable authentication
+
+Entirely disabling authentication isn’t recommended, since it can lead to security exploits through YAML import interfaces and expose sensitive host information, however it may be useful for troubleshooting.
+
+    Set require_ssl_smart_proxies, restrict_registered_smart_proxies and require_ssl to false.
+
+5.4.2 Securing Smart Proxy Requests
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Foreman makes HTTP requests to smart proxies for a variety of orchestration tasks. In a production setup, these should use SSL certificates so the smart proxy can verify the identity of the Foreman host.
+
+In a simple setup, a single Puppet Certificate Authority (CA) can be used for authentication between Foreman and proxies. In more advanced setups with multiple CAs or an internal CA, the services can be configured as follows.
+Proxy configuration options
+
+/etc/foreman-proxy/settings.yml contains the locations to the SSL certificates and keys:
+
+---
+# SSL Setup
+
+# if enabled, all communication would be verified via SSL
+# NOTE that both certificates need to be signed by the same CA in order for this to work
+# see http://theforeman.org/projects/smart-proxy/wiki/SSL for more information
+:ssl_certificate: /var/lib/puppet/ssl/certs/FQDN.pem
+:ssl_ca_file: /var/lib/puppet/ssl/certs/ca.pem
+:ssl_private_key: /var/lib/puppet/ssl/private_keys/FQDN.pem
+
+In this example, the proxy is sharing Puppet’s certificates, but it could equally use its own. Under a Puppet 4 AIO installation, substitute above paths with /etc/puppetlabs/puppet/ssl/.
+
+In addition it contains a list of hosts that connections will be accepted from, which should be the host(s) running Foreman:
+
+# the hosts which the proxy accepts connections from
+# commenting the following lines would mean every verified SSL connection allowed
+:trusted_hosts:
+- foreman.corp.com
+#- foreman.dev.domain
+
+Configuring Foreman
+
+For Foreman to connect to an SSL-enabled smart proxy, it needs configuring with SSL certificates in the same way.
+
+The locations of the certificates are managed in the Settings page, under Provisioning - the ssl_ca_file, ssl_certificate and ssl_priv_key settings. By default these will point to the Puppet locations - for manually generated certificates, or non-standard locations, they may have to be changed.
+
+Lastly, when adding the smart proxy in Foreman, ensure the URL begins with https:// rather than http://.
+Sharing Puppet certificates
+
+If using Puppet’s certificates, the following lines will be required in puppet.conf to relax permissions to the puppet group. The foreman and/or foreman-proxy users should then be added to the puppet group.
+
+[main]
+privatekeydir = $ssldir/private_keys { group = service }
+hostprivkey = $privatekeydir/$certname.pem { mode = 640 }
+
+Note that the “service” keyword will be interpreted by Puppet as the “puppet” service group.
+
+5.5 Backup, Recovery and Migration
+__________________________________
+
+This chapter will provide you with information how to backup and recover your instance. All commands presented here are just examples and should be considered as a template command for your own backup script which differs from one environment to other.
+
+It is possible to perform a migration by doing backup one one host and recovery on a different host, but in this case pay attention to different configuration between the two hosts.
+
+This can be applied to the Foreman application itself, but pay attention when migrating smart-proxy and services because things like different IP addresses or hostnames will need manual intervention.
+
+5.5.1 Backup
+^^^^^^^^^^^^
+
+This chapter will provide you with information how to backup a Foreman instance.
+Database
+PostgreSQL, MySQL, SQLite
+
+Run foreman-rake db:dump. It will print a message when it finishes with the dump file location relative to the Foreman root.
+SQLite disclaimer
+
+SQLite databases are all contained in a single file, so you can back them up by copying the file to another location, but it is recommended to shut down the instance first, or at least verify the integrity of the created archive using sqlite3 command. The dump command above is preferred.
+Configuration
+
+On Red Hat compatible systems issue the following command to backup whole /etc directory structure:
+
+tar --selinux -czvf etc_foreman_dir.tar.gz /etc/foreman
+
+For all other distribution do similar command:
+
+tar -czvf etc_foreman_dir.tar.gz /etc/foreman
+
+Puppet master
+
+On the puppet master node, issue the following command to backup Puppet certificates on Red Hat compatible systems
+
+tar --selinux -czvf var_lib_puppet_dir.tar.gz /var/lib/puppet/ssl
+
+For all other distribution do similar command:
+
+tar -czvf var_lib_puppet_dir.tar.gz /var/lib/puppet/ssl
+
+Under a Puppet 4 AIO installation, back up /etc/puppetlabs/puppet/ssl instead.
+DHCP, DNS and TFTP services
+
+Depending on used software packages, perform backup of important data and configuration files according to the documentation. For ISC DHCP and DNS software, these are located within /etc and /var directories depending on your distribution as well as TFTP service.
+
+5.5.2 Recovery
+^^^^^^^^^^^^^^
+
+Recovery process is supposed to be performed on the same host the backup was created on on the same distribution and version.
+
+If you planning to migrate Foreman instance, please read remarks in the beginning of this chapter.
+
+Note: Foreman instance must be stopped before proceeding.
+PostgreSQL, MySQL, SQLite
+
+Run foreman-rake db:import_dump file=/your/db/dump/location. This will load your dump into the current database for your environment. It will print a message to notify you when it has finished importing the dump.
+
+Remember to stop the Foreman instance and any other process consuming data from the database temporarily during the import and turn it back on after it ends.
+Configuration
+
+On Red Hat compatible systems issue the following command to restore whole /etc directory structure:
+
+tar --selinux -xzvf etc_foreman_dir.tar.gz -C /
+
+For all other distribution do similar command:
+
+tar -xzvf etc_foreman_dir.tar.gz -C /
+
+It is recommended to extract files to an empty directory first and inspect the content before overwriting current files (change -C option to an empty directory).
+Puppet master
+
+On the puppet master node, issue the following command to restore Puppet certificates on Red Hat compatible systems
+
+tar --selinux -xzvf var_lib_puppet_dir.tar.gz -C /
+
+For all other distribution do similar command:
+
+tar -xzvf var_lib_puppet_dir.tar.gz -C /
+
+It is recommended to inspect the content of the restore first (see above).
+DHCP, DNS and TFTP services
+
+Depending on used software packages, perform recovery of important data and configuration files according to the documentation. This depends on the software and distribution that is in use.
+Changing the FQDN
+
+It’s preferable when migrating to keep the FQDN unchanged to reduce the risk of configuration errors from references to the old hostname.
+
+However if the FQDN does change, check and update the following items:
+
+    Foreman settings under Administer > Settings:
+        General > foreman_url - URL of the Foreman web UI
+        Provisioning > unattended_url - URL of the Foreman web API for unattended provisioning
+        Provisioning > ssl_certificate, ssl_priv_key - paths to SSL certificate and key used for smart proxy communications
+    The registered smart proxy URL if installed, edit via Infrastructure > Smart Proxies
+    Puppet SSL certs: generate new ones with puppet cert generate NEW_FQDN
+    Apache configs: update conf.d/*-{foreman,puppet}.conf with new SSL cert/key filenames, ServerName and VirtualHost IP addresses if applicable
+    Smart proxy configuration files in /etc/foreman-proxy:
+        settings.yml - update SSL cert/key filenames
+        settings.d/dns_nsupdate_gss.yml - update dns_tsig_principal if the principal name has changed
+        settings.d/puppet_proxy_legacy.yml - update SSL cert/key filenames
+        settings.d/puppet_proxy_puppet_api.yml - update SSL cert/key filenames
+        settings.d/realm.yml - update realm_principal if the principal name has changed
+        settings.d/templates.yml - update template_url for URL of the Foreman web API
+    Puppet masters: URLs and cert/key filenames in /etc/puppetlabs/puppet/foreman.yaml or /etc/puppet/foreman.yaml
+
+5.6 Rails Console
+_________________
+
+Foreman is a Ruby on Rails application, which provides an interactive console for advanced debugging and troubleshooting tasks. Using this allows easy bypass of authorization and security mechanisms, and can easily lead to loss of data or corruption unless care is taken.
+
+To access the Rails console, choose the method below appropriate to the installation method.
+RPM and Debian installations
+
+As root, execute:
+
+yum install foreman-console
+foreman-rake console
+
+or to run in sandboxed mode, which rolls back changes on exit, execute:
+
+foreman-rake console -- --sandbox
+
+Source installations
+
+As the user running Foreman and in the source directory, execute:
+
+RAILS_ENV=production bundle exec rails c
+
+or to run in sandboxed mode, which rolls back changes on exit, execute:
+
+RAILS_ENV=production bundle exec rails c --sandbox
+
+Set up
+
+To assume full admin permissions in order to modify objects, enter in the console:
+
+User.current = User.only_admin.visible.first
+
+5.7 External Authentication
+___________________________
+
+The following tutorial explains how to set up Foreman authentication against FreeIPA (or Identity Management) server. First part of the tutorial describes how to configure Foreman machine via Foreman installer options. The second one shows how to achieve the same result without using these options.
+5.7.1 Configuration via Foreman installer
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+We assume the Foreman machine is FreeIPA-enrolled:
+
+ipa-client-install
+
+On the FreeIPA server, we create the service. (Please make sure you have obtained Kerberos ticket before this step - for example, by using kinit.)
+
+ipa service-add HTTP/<the-foreman-fqdn>
+
+Then we install Foreman.
+
+foreman-installer --foreman-ipa-authentication=true
+
+This option can be used for the reconfiguration of existing installation as well.
+
+In case you want to use IPA server’s host-based access control (HBAC) features (make sure allow_all rule is disabled), the default PAM service name (which would be matched by HBAC service name) is foreman. You can override the default name with:
+
+foreman-installer --foreman-ipa-authentication=true --foreman-pam-service=<pam_service_name>
+
+For more information about HBAC configuration see section below.
+5.7.2 HBAC configuration
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+We suppose that the Foreman machine is FreeIPA-enrolled and HTTP/<the-foreman-fqdn> service has been created on FreeIPA server.
+
+At first we create HBAC (host-based access control) service and rule on the FreeIPA server. In the following examples, we will use the PAM service name foreman-prod.
+
+On the FreeIPA server, we define the HBAC service and rule and link them together:
+
+ipa hbacsvc-add foreman-prod
+ipa hbacrule-add allow_foreman_prod
+ipa hbacrule-add-service allow_foreman_prod --hbacsvcs=foreman-prod
+
+Then we add user we wish to have access to the service foreman-prod, and the hostname of our Foreman server:
+
+ipa hbacrule-add-user allow_foreman_prod --user=<username>
+ipa hbacrule-add-host allow_foreman_prod --hosts=<the-foreman-fqdn>
+
+Alternatively, host groups and user groups could be added to the allow_foreman_prod rule.
+
+At any point of the configuration, we can check the status of the rule:
+
+ipa hbacrule-find foreman-prod
+ipa hbactest --user=<username> --host=<the-foreman-fqdn> --service=foreman-prod
+
+Chances are there will be HBAC rule allow_all matching besides our new allow_foreman_prod rule. See http://www.freeipa.org/page/Howto/HBAC_and_allow_all for steps to disable the catchall allow_all HBAC rule while maintaining the correct operation of your FreeIPA server and enrolled clients. The goal is only allow_foreman_prod matching when checked with ipa hbactest.
+5.7.3 Kerberos Single Sign-On
+
+In this part of the tutorial we will show how to set up Foreman authentication manually (without using installer option).
+
+At first we enroll Foreman machine and define HTTP/<the-foreman-fqdn> service in the FreeIPA server. Then we define HBAC service and rules (for more information see the previous section). In the following steps we will use the HBAC service name foreman-prod.
+
+Next step is to define matching PAM service on the Foreman machine. We create file /etc/pam.d/foreman-prod with the following content:
+
+auth    required   pam_sss.so
+account required   pam_sss.so
+
+We will also want to enable two SELinux booleans on the Foreman machine:
+
+setsebool -P allow_httpd_mod_auth_pam on
+setsebool -P httpd_dbus_sssd on
+
+Until all the packages are part of your operation system distribution, you can get them from Jan Pazdziora’s copr yum repo. At http://copr.fedoraproject.org/coprs/adelton/identity_demo/ choose the correct .repo file. For example, for Foreman on RHEL 6, the following command will configure yum:
+
+wget -O /etc/yum.repos.d/adelton-identity_demo.repo \
+  https://copr.fedoraproject.org/coprs/adelton/identity_demo/repo/epel-6/adelton-identity_demo-epel-6.repo
+
+Get the keytab for the service and set correct permissions (we assume the FreeIPA server is ipa.example.com, adjust to match your setup):
+
+kinit admin
+ipa-getkeytab -s $(awk '/^server =/ {print $3}' /etc/ipa/default.conf) -k /etc/http.keytab -p HTTP/$( hostname )
+chown apache /etc/http.keytab
+chmod 600 /etc/http.keytab
+
+Install mod_auth_kerb and mod_authnz_pam:
+
+yum install -y mod_auth_kerb mod_authnz_pam
+
+Configure the module to be used by Apache (we assume the realm is EXAMPLE.COM, adjust to match your setup):
+
+# add to /etc/httpd/conf.d/auth_kerb.conf
+LoadModule auth_kerb_module modules/mod_auth_kerb.so
+LoadModule authnz_pam_module modules/mod_authnz_pam.so
+<Location /users/extlogin>
+  AuthType Kerberos
+  AuthName "Kerberos Login"
+  KrbMethodNegotiate On
+  KrbMethodK5Passwd Off
+  KrbAuthRealms EXAMPLE.COM
+  Krb5KeyTab /etc/http.keytab
+  KrbLocalUserMapping On
+  # require valid-user
+  require pam-account foreman-prod
+  ErrorDocument 401 '<html><meta http-equiv="refresh" content="0; URL=/users/login"><body>Kerberos authentication did not pass.</body></html>'
+  # The following is needed as a workaround for https://bugzilla.redhat.com/show_bug.cgi?id=1020087
+  ErrorDocument 500 '<html><meta http-equiv="refresh" content="0; URL=/users/login"><body>Kerberos authentication did not pass.</body></html>'
+</Location>
+
+We tell Foreman that it is OK to trust the authentication done by Apache by adding to /etc/foreman/settings.yaml or under Administer > Settings > Authentication:
+
+:authorize_login_delegation: true
+
+We restart Apache:
+
+service httpd restart
+
+The machine on which you run the browser to access Foreman’s WebUI needs to be either FreeIPA-enrolled to the FreeIPA server or at least configured (typically in /etc/krb5.conf) to know about the FreeIPA server Kerberos services. The browser needs to have the Negotiate Authentication enabled; for example in Firefox, in the about:config settings, network.negotiate-auth.trusted-uris needs to include the Foreman server FQDN or its domain. If you then kinit as existing Foreman user to obtain Kerberos ticket-granting ticket, accessing Foreman’s WebUI should not ask for login/password and should display the authenticated dashboard directly.
+
+Please note that we use directive require pam-account foreman-prod to also check the access against FreeIPA’s HBAC rule. If you do not see Kerberos authentication passing, check that the user is allowed access in FreeIPA (in the section about HBAC configuration we’ve named the HBAC rule allow_forman_prod).
+5.7.4 PAM Authentication
+
+The FreeIPA server can be used as an authentication provider for Foreman’s standard logon form. We assume the Foreman machine is already FreeIPA-enrolled so sssd is configured to be able to facilitate the authentication, and we have PAM service foreman-prod configured.
+
+We will install the necessary Apache modules:
+
+yum install -y mod_intercept_form_submit mod_authnz_pam
+
+We will then configure Apache to perform PAM authentication (and access control check) using the PAM service foreman-prod, for example in configuration file /etc/httpd/conf.d/intercept_form_submit.conf:
+
+LoadModule intercept_form_submit_module modules/mod_intercept_form_submit.so
+LoadModule authnz_pam_module modules/mod_authnz_pam.so
+<Location /users/login>
+  InterceptFormPAMService foreman-prod
+  InterceptFormLogin login[login]
+  InterceptFormPassword login[password]
+</Location>
+
+After restarting Apache with service httpd restart, you should be able to log in to Foreman’s WebUI as existing user, using password from the FreeIPA server. Please note that intercept_form_submit_module uses authnz_pam_module to run not just the authentication, but access check as well. If the authentication does not pass and you are sure you use the correct password, check also that the user is allowed access in FreeIPA HBAC rules.
+5.7.5 Populate users and attributes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+So far we have tried external authentication for existing Foreman users.
+
+However, it is also possible to have the user’s records in Foreman created automatically, on the fly when they first log in using external authentication (single sign-on, PAM).
+
+The first step to enable this feature is to add
+
+:authorize_login_delegation_auth_source_user_autocreate: External
+
+to /etc/foreman/settings.yaml or under Administer > Settings > Authentication.
+
+Since we will want the newly created user records to have valid name and email address, we need to set up sssd to provide these attributes and mod_lookup_identity to pass them to Foreman. We start by installing the packages:
+
+yum install -y sssd-dbus mod_lookup_identity
+
+Amend the configuration of sssd in /etc/sssd/sssd.conf:
+
+# /etc/sssd/sssd.conf, the [domain/...] section, add:
+ldap_user_extra_attrs = email:mail, firstname:givenname, lastname:sn
+
+# /etc/sssd/sssd.conf, the [sssd] section, amend the services line to include ifp:
+services = nss, pam, ssh, ifp
+
+# /etc/sssd/sssd.conf, add new [ifp] section:
+[ifp]
+allowed_uids = apache, root
+user_attributes = +email, +firstname, +lastname
+
+Configure Apache to retrieve these attributes, for example in /etc/httpd/conf.d/lookup_identity.conf:
+
+LoadModule lookup_identity_module modules/mod_lookup_identity.so
+<LocationMatch ^/users/(ext)?login$>
+  LookupUserAttr email REMOTE_USER_EMAIL " "
+  LookupUserAttr firstname REMOTE_USER_FIRSTNAME
+  LookupUserAttr lastname REMOTE_USER_LASTNAME
+  LookupUserGroupsIter REMOTE_USER_GROUP
+</LocationMatch>
+
+Restart both sssd and Apache:
+
+service sssd restart
+service httpd restart
+
+Now when you log in either using Kerberos ticket or using user’s FreeIPA password (make sure the user has access allowed in FreeIPA HBAC rule), even if the user did not log in to Foreman before, their record will be populated with name and email address from the FreeIPA server (you can check in the top right corner that the full name is there) and they will also be updated upon every subsequent externally-authentication logon.
+
+You might notice that the newly created user does not have many access right. To fully use the central identity provider like FreeIPA, it can be useful to link group membership of externally-authenticated Foreman users to the group membership of users in FreeIPA, and then set Foreman roles to these user groups. That way when a new network administrator has their record created in FreeIPA with proper user groups and then logs in to Foreman for the first time, their Foreman account will automatically get group memberships in Foreman groups, giving them appropriate roles and access rights.
+
+The prerequisite is obviously to have the user groups and mamberships set appropriately for your organization in FreeIPA.
+
+For each FreeIPA user group that should have some semantics in Foreman, we create new user groups in Foreman, and then use the tab External groups and Add external user group to add name of the user group in FreeIPA, for Auth source EXTERNAL. We can then assign roles to this Foreman user group to match the desired role for users from the given FreeIPA user group.
+
+Upon their first login, externally-authenticated users will get their group membership in Foreman set to match the mapping to FreeIPA groups and their group membership in FreeIPA. Upon subsequent externally-authenticated logons, the membership in these mapped groups will be updated to match the current membership in FreeIPA.
+5.7.6 Namespace separation
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If clear namespace separation of internally and externally authenticated users is desired, we can distinguish the externally authenticated (and populated) users by having @REALM part in their user names.
+
+For the Kerberos authentication, using KrbLocalUserMapping Off will keep the REALM part of the logon name:
+
+# in /etc/httpd/conf.d/auth_kerb.conf
+<Location /users/extlogin>
+  AuthType Kerberos
+  ...
+  KrbLocalUserMapping Off
+</Location>
+
+For the PAM authentication, using InterceptFormLoginRealms EXAMPLE.COM will make the user’s login include this @REALM part (even if the user did not explicitly specify it), thus matching the username seen by Foreman when authenticated via Kerberos ticket:
+
+# in /etc/httpd/conf.d/intercept_form_submit.conf
+<Location /users/login>
+  ...
+  InterceptFormLoginRealms EXAMPLE.COM
+</Location>
+
+With this configuration, the @REALM will be part of the username and it would be clear that bob is INTERNAL-authenticated and bob@EXAMPLE.COM is different user, EXTERNAL-authenticated. The admin then can manually create another admin@EXAMPLE.COM user (with administrator privileges) and even the admin can use Kerberos or PAM authentication in this setup.
+5.8 Multiple Foreman instances
+______________________________
+
+The following steps are suggested when configuring multiple Foreman instances to work together. They will ensure that data, passwords, and cookies are shared between multiple instances.
+
+$app_root is wherever you installed Foreman, usually /usr/share/foreman.
+5.8.1 Sharing the database
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+All Foreman instances in a cluster/group must point to the same database. This can be done during the initial installation (through flags or altering foreman_installer_answers.yaml) or by directly altering /etc/foreman/database.yaml and pointing the correct environment (usually production) to your Foreman DB, then restarting Foreman.
+5.8.2 Encrypting passwords
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+As described in 5.2.10, passwords stored locally in Foreman’s DB are encrypted. In order for multiple Foreman instances to encrypt and decrypt passwords correctly, they all need to have the same encryption key defined in /etc/foreman/encryption_key.rb.
+5.8.3 Signing cookies
+^^^^^^^^^^^^^^^^^^^^^
+
+The last file required to make a Foreman cluster work is $app_root/config/initializers/local_secret_token.rb, which is used to sign cookies. This should be set the same across all Foreman servers in your cluster. Once you have set local_secret_token.rb, restart Foreman and clear Foreman’s cache:
+
+touch ~foreman/tmp/restart.txt
+foreman-rake tmp:cache:clear
+foreman-rake tmp:sessions:clear
+
+Note: Without this change, the user may need to log in multiple times or run in to “Invalid Authenticity Token”/CSRF issues.
+5.8.4 Other considerations
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There are other considerations when creating a cluster:
+
+    You might want to share a common hostname, which can be set during installation or by modifying your Apache config files.
+    You might want a custom cert to reflect the cluster’s cname, and you’ll want to make sure your Foreman-related infrastructure is configured to use SSL.
+    You can use a central memcached instance instead of each Foreman instance’s local cache. Foreman has a plugin you can use.
+
+5.9 HTTP(S) Proxy
+_________________
+
+If Foreman is running behind a Firewall, that has HTTP and HTTPS blocked a HTTP proxy can be configured to allow requests with external systems, including Smart Proxies.
+
+The following settings allow configuring what HTTP proxy to use and a list of hosts to which requests do not need to pass over the HTTP proxy.
+
+    :http_proxy: - The hostname, port (and Authentication if required) as http://[user:password@]HOST:PORT
+    :http_proxy_except_list: - An array of hostnames
+
+Both settings can also be accessed by administrators in the web interface under Adminsiter -> Settings
