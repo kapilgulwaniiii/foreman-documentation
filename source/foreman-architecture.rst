@@ -1,0 +1,20 @@
+.. Foreman Architecture
+
+
+1. Foreman 1.21 Manual
+======================
+
+Foreman Architecture
+____________________
+A Foreman installation will always contain a central foreman instance that is responsible for providing the Web based GUI, node configurations, initial host
+configuration files, etc. However, if the foreman installation supports unattended installations then other operations need to be performed to fully automate
+this process. The smart proxy manages remote services and is generally installed with all Foreman installations to manage TFTP, DHCP, DNS, Puppet, Puppet CA,
+Ansible, Salt, and Chef.
+
+Smart-Proxy
+___________
+A Smart-Proxy is located on or near a machine that performs a specific function and helps foreman orchestrate the process of commissioning a new host. Placing the proxy on or near to the actual service will also help reduce latencies in large distributed organizations.
+
+* Foreman Architecture(Its an Foreman Architecture Image)
+
+.. image:: https://www.theforeman.org/static/images/foreman_architecture.png
